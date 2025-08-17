@@ -4,7 +4,6 @@ from app.db import engine
 
 router = APIRouter(prefix="/debug", tags=["debug"])
 
-
 @router.get("/db")
 def db_check():
     try:
