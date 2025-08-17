@@ -22,9 +22,7 @@ def register(user_in: schemas.UserCreate, db: Session=Depends(get_db)):
 def login(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == user_in.email).first()
     if not user or not utils.verify_password(user_in.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-        )
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    from app.jwt import create_access_token
+    return {"access_token": create_access_token(str(user.id)), "token_type": "bearer"}
 
-    return {"access_token": "fake-jwt-token", "token_type": "bearer"}
