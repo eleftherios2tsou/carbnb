@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from uuid import UUID
 from app.db import get_db
 from app.deps import get_current_user
 from app.cars.models import Car
-from app.cars.schemas import CarIn, CarOut
+from app.cars.schemas import CarIn, CarOut, CarUpdate
 
 router = APIRouter(prefix="/cars", tags=["cars"])
 
@@ -26,3 +26,43 @@ def get_car(car_id: UUID, db: Session = Depends(get_db)):
 @router.get("", response_model=list[CarOut])
 def list_my_cars(db: Session = Depends(get_db), user=Depends(get_current_user)):
     return db.query(Car).filter(Car.owner_id == user.id).order_by(Car.created_at.desc()).all()
+
+
+def _get_owned_car_or_404(car_id: UUID, db: Session, user_id: UUID) -> Car:
+    car = db.get(Car, car_id)
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+    if car.owner_id != user_id:
+        raise HTTPException(status_code=403, detail="Not your car")
+    return car
+
+@router.patch("/{car_id}", response_model=CarOut)
+def update_car(
+    car_id: UUID,
+    body: CarUpdate,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    car = _get_owned_car_or_404(car_id, db, user.id)
+
+    data = body.model_dump(exclude_unset=True)
+    for k, v in data.items():
+        setattr(car, k, v)
+
+    db.add(car)
+    db.commit()
+    db.refresh(car)
+    return car
+
+@router.delete("/{car_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_car(
+    car_id: UUID,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    car = _get_owned_car_or_404(car_id, db, user.id)
+    # soft delete
+    car.is_active = False
+    db.add(car)
+    db.commit()
+    # 204: empty body

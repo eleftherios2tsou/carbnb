@@ -9,7 +9,7 @@ app.include_router(debug.router)
 app.include_router(auth.router)
 app.include_router(me.router)
 app.include_router(profiles_router.router)
-app.include_router(cars_router)
+app.include_router(cars_router.router)
 @app.get("/healthz")
 def healthz():
     return {"status": "ok", "env": settings.app_env}
