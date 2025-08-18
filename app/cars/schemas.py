@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from uuid import UUID
+from datetime import datetime
 
 class CarIn(BaseModel):
     make: str
@@ -31,6 +32,8 @@ class CarOut(BaseModel):
     is_active: bool
 
 class CarUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     make: str | None = None
     model: str | None = None
     year: int | None = Field(default=None, ge=1980)
@@ -44,11 +47,21 @@ class CarUpdate(BaseModel):
     lng: float | None = None
     is_active: bool | None = None
 
-    @field_validator("transmission")
+    @field_validator("make", "model", "fuel", "location_text", mode="before")
     @classmethod
-    def check_transmission(cls, v):
+    def check_year(cls, v):
         if v is None:
             return v
-        if v not in {"manual", "automatic"}:
-            raise ValueError("transmission must be 'manual' or 'automatic'")
+        max_year = datetime.now().year + 1
+        if v > max_year:
+            raise ValueError(f"year must be <= {max_year}")
+        return v
+
+    @field_validator("lat")
+    @classmethod
+    def check_lat(cls, v):
+        if v is None:
+            return v
+        if not (-90.0 <= v <= 90.0):
+            raise ValueError("lat must be between -90 and 90")
         return v

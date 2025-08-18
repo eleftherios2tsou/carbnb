@@ -5,6 +5,7 @@ from app.db import get_db
 from app.deps import get_current_user
 from app.cars.models import Car
 from app.cars.schemas import CarIn, CarOut, CarUpdate
+from sqlalchemy.exc import DataError, IntegrityError
 
 router = APIRouter(prefix="/cars", tags=["cars"])
 
@@ -49,20 +50,21 @@ def update_car(
     for k, v in data.items():
         setattr(car, k, v)
 
-    db.add(car)
-    db.commit()
+    try:
+        db.add(car)
+        db.commit()
+    except (IntegrityError, DataError) as e:
+        db.rollback()
+        # Friendly messages for common constraints
+        msg = str(e.orig)
+        if "car_transmission_valid" in msg:
+            raise HTTPException(status_code=400, detail="transmission must be 'manual' or 'automatic'")
+        if "car_seats_positive" in msg:
+            raise HTTPException(status_code=400, detail="seats must be > 0")
+        if "car_price_positive" in msg:
+            raise HTTPException(status_code=400, detail="daily_price_cents must be > 0")
+        if "car_year_valid" in msg:
+            raise HTTPException(status_code=400, detail="year is out of allowed range")
+        raise HTTPException(status_code=400, detail="invalid data for car update")
     db.refresh(car)
     return car
-
-@router.delete("/{car_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_car(
-    car_id: UUID,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user),
-):
-    car = _get_owned_car_or_404(car_id, db, user.id)
-    # soft delete
-    car.is_active = False
-    db.add(car)
-    db.commit()
-    # 204: empty body
