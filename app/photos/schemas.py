@@ -16,3 +16,4 @@ class PhotoOut(BaseModel):
     url: HttpUrl
     is_cover: bool
     sort_order: int
+

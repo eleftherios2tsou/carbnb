@@ -6,7 +6,7 @@ from app.deps import get_current_user
 from app.cars.models import Car
 from app.cars.schemas import CarIn, CarOut, CarUpdate
 from sqlalchemy.exc import DataError, IntegrityError
-
+from app.photos.models import CarPhoto
 router = APIRouter(prefix="/cars", tags=["cars"])
 
 @router.post("", response_model=CarOut)
@@ -68,3 +68,14 @@ def update_car(
         raise HTTPException(status_code=400, detail="invalid data for car update")
     db.refresh(car)
     return car
+
+def _car_out_with_cover(db: Session, car: Car) -> dict:
+    cover = (
+        db.query(CarPhoto)
+        .filter(CarPhoto.car_id == car.id, CarPhoto.is_cover.is_(True))
+        .order_by(CarPhoto.sort_order.asc(), CarPhoto.created_at.asc())
+        .first()
+    )
+    base = CarOut.model_validate(car).model_dump()
+    base["cover_photo_url"] = cover.url if cover else None
+    return base

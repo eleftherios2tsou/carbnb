@@ -25,3 +25,7 @@ def public_url(key: str) -> str:
     region = settings.aws_region
     bucket = settings.aws_s3_bucket
     return f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
+
+def delete_object(key: str) -> None:
+    s3 = get_s3_client()
+    s3.delete_object(Bucket=settings.aws_s3_bucket, Key=key)
