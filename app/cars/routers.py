@@ -22,11 +22,19 @@ def get_car(car_id: UUID, db: Session = Depends(get_db)):
     car = db.get(Car, car_id)
     if not car or not car.is_active:
         raise HTTPException(status_code=404, detail="Car not found")
-    return car
+    return _car_out_with_cover(db, car)
 
 @router.get("", response_model=list[CarOut])
-def list_my_cars(db: Session = Depends(get_db), user=Depends(get_current_user)):
-    return db.query(Car).filter(Car.owner_id == user.id).order_by(Car.created_at.desc()).all()
+def list_my_cars(
+    active: bool | None = None,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    q = db.query(Car).filter(Car.owner_id == user.id)
+    if active is not None:
+        q = q.filter(Car.is_active.is_(active))
+    cars = q.order_by(Car.created_at.desc()).all()
+    return [_car_out_with_cover(db, c) for c in cars]
 
 
 def _get_owned_car_or_404(car_id: UUID, db: Session, user_id: UUID) -> Car:
