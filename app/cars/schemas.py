@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict, HttpUrl
 from uuid import UUID
 from datetime import datetime
 
@@ -30,6 +30,7 @@ class CarOut(BaseModel):
     lat: float | None = None
     lng: float | None = None
     is_active: bool
+    cover_photo_url: HttpUrl | None = None
 
 class CarUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
